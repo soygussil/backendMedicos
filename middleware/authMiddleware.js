@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
-const checkAuth = (req, res, next) => {
+import Medico from "../models/Medico.js";
+const checkAuth = async (req, res, next) => {
   let token;
 
   if (
@@ -10,15 +11,21 @@ const checkAuth = (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log(decoded);
+      req.medico = await Medico.findById(decoded.id).select(
+        "-password -token -confirmado"
+      );
+      return next();
     } catch (error) {
       const e = new Error("Token no válido");
-      res.status(403).json({ msg: e.message });
+      return res.status(403).json({ msg: e.message });
     }
   }
 
-  const error = new Error("Token no válido o inexistente");
-  res.status(403).json({ msg: error.message });
+  if (!token) {
+    const error = new Error("Token no válido o inexistente");
+    res.status(403).json({ msg: error.message });
+  }
+
   next();
 };
 export default checkAuth;
