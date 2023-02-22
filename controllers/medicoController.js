@@ -1,5 +1,6 @@
 import Medico from "../models/Medico.js";
 import generarJWT from "../helpers/generarJWT.js";
+import generarID from "../helpers/generarId.js";
 
 const registrar = async (req, res) => {
   const { email } = req.body;
@@ -20,7 +21,8 @@ const registrar = async (req, res) => {
 };
 
 const perfil = (req, res) => {
-  res.json({ msg: "Mostrando Perfil..." });
+  const { medico } = req;
+  res.json({ perfil: medico });
 };
 
 const confirmar = async (req, res) => {
@@ -68,4 +70,60 @@ const autenticar = async (req, res) => {
   }
 };
 
-export { registrar, perfil, confirmar, autenticar };
+const olvidePassword = async (req, res) => {
+  const { email } = req.body;
+  const existeMedico = await Medico.findOne({ email });
+  if (!existeMedico) {
+    const error = new Error("El usuario no existe");
+    return res.status(400).json({ msg: error.message });
+  }
+
+  try {
+    existeMedico.token = generarID();
+    await existeMedico.save();
+    res.json({ msg: "Hemos enviado un email con las instrucciones." });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const comprobarToken = async (req, res) => {
+  const { token } = req.params;
+  const tokenValido = await Medico.findOne({ token });
+  if (tokenValido) {
+    // El token es válido, el usuario existe.
+    res.json({ msg: "Token válido, el usuario existe." });
+  } else {
+    const error = new Error("Token no válido");
+    return res.status(400).json({ msg: error.message });
+  }
+};
+
+const nuevoPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+  const medico = await Medico.findOne({ token });
+  if (!medico) {
+    const error = new Error("Hubo un error");
+    return res.status(400).json({ msg: error.message });
+  }
+
+  try {
+    medico.token = null;
+    medico.password = password;
+    await medico.save();
+    res.json({ msg: "password modificado correctamente" });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export {
+  registrar,
+  perfil,
+  confirmar,
+  autenticar,
+  olvidePassword,
+  comprobarToken,
+  nuevoPassword,
+};
